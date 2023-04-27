@@ -1,4 +1,4 @@
-const Users = require('../models/user');
+const User = require('../models/user');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const OTP = '031002';
@@ -6,25 +6,37 @@ const OTP = '031002';
 module.exports = {
 	login: async (req, res) => {
 		try {
-			const { email, password } = req.body;
-			const user = await Users.findOne(
-				{ 
-					email: email 
-				});
+            // const { id, email, password } = req.body;
+			const { id, email, password } = req.body;
+			const user = await User.findOne({
+                email
+            })
 			if (!user)
 				return res.status(500).json({ message: "User does not exist" });
 
 			if (password !== user.password) {
 				return res.status(401).json({ message: "Wrong password!" });
 			} 
-			const token = jwt.sign(
-                { email: email }, "secret_code", {
-				expiresIn: "1h",
-			});
-			return res.status(200).json({ token: token });
-		} catch (err) {
-			console.log(err);
-			return res.status(500).json({ message: err });
+			if(user) {
+                if(password, user.password) {
+                    const token = jwt.sign({
+                        id: user.id
+                    },
+                    'secret_key',{
+                        expiresIn: '1h'
+                    })
+                    return res.status(200).json({ message: "Logged in", id, email, password, token })
+                    // return res.status(200).json({ message: "Logged in", id, email, password, token })
+                }
+
+            }
+
+            return res.status(404).json({
+                message: "user not found"
+            })
+		} catch (error) {
+			console.log(error);
+			return res.status(500).json({ message: error });
 		}
 	},
 
@@ -34,70 +46,54 @@ module.exports = {
 			if (OTPCode !== OTP)
 				return res.status(401).json({ message: "Incorrect OTP" });
 
-			// const token = jwt.sign(
-            //     { email: email }, "secret_code", {
-			// 	expiresIn: "1h",
-			// });
-			// return res.status(200).json({ token: token });
-			return res.status(200).json({ message: "Logged in", email });
+			const token = jwt.sign(
+                { email: email }, "secret_code", {
+				expiresIn: "1h",
+			});
+			return res.status(200).json({ message: "Logged in", email, token });
 		} catch (err) {
 			return res.status(500).json({ message: err });
 		}
 	},
 
-	changeName: async (req, res) => {
-		try {
-			// const { email, name } = res.body;
-			const { nameUpdated } = req.body;
-
-			const updatedUser = await Users.findOneAndUpdate(
-				{ name: nameUpdated },
-				{
-					new: true,
-				}
-			);
-			return res.status(200).json({ message: "User succesfully updated", updatedUser });
-		} catch (error) {
-			console.log(error);
-			return res.status(500).json({ message: error });
-		}
-	},
-
-	changeEmail: async (req, res) => {
-		try {
+	getProfile: async (_, res) => {
+		try { 
 			const email = res.user.email;
-			const { EmailUpdated } = req.body;
-
-			const updatedUser = await Users.findOneAndUpdate(
-				{email: email},
-				{email: EmailUpdated},
-				{new: true}
-			);
-			return res
-				.status(200)
-				.json({ message: "User succesfully updated", updatedUser });
+			const user = await User.findOne({
+                id, email, Fullname 
+            })
+			return res.status(200).json({
+                data: user,
+                message: "ok"
+            })
 		} catch (err) {
-			console.log(err);
 			return res.status(500).json({ message: err });
 		}
-	},
+	}, 
 
-	changePassword: async (req, res) => {
-		try {
-			const email = res.user.email;
-			const { password } = req.body;
+	updateProfile: async (req, res) => {
+        try {
+            const { userId, newName, newPhone, newEmail, newPassword } = await req.body;
 
-			const updatedUser = await Users.findOneAndUpdate(
-				{ email: email },
-				{ password: password },
-				{
-					new: true,
-				}
-			);
-			return res.status(200).json({ message: "User succesfully updated", updatedUser });
-		} catch (error) {
-			console.log(error);
-			return res.status(500).json({ message: error });
-		}
-	},
+            User.findByIdAndUpdate(userId, req.body, {
+                    new: true
+            }).then((result) => {
+                    if (!result) {
+                        return res.status(404).json({
+                            message: "user not found"
+                        })
+                    }
+                    return res.status(200).json({
+                        data: result,
+                        message: "ok"
+                    })
+                }).catch((err) => {
+                    console.log(err);
+                })
+
+        } catch (err) {
+			return res.status(500).json({ message: err });
+        }
+    },
+
 };
